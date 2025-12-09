@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Papa Parse CSV to JS Array</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
+</head>
+<body>
+    <h2>CSV to JavaScript Array Converter (Using Papa Parse)</h2>
+    <p>Select your CSV file below. The array will be available for download as JSON.</p>
+    
+    <input type="file" id="csvFileInput" accept=".csv">
+    <button id="downloadBtn" disabled>Download Data as JSON</button>
+
+    <script>
+    // Global variable to hold the parsed data array so the download function can access it
+    let parsedData = []; 
+    const downloadBtn = document.getElementById('downloadBtn');
+    const csvFileInput = document.getElementById('csvFileInput');
+
+    // 1. File Input Listener: Triggers parsing
+    csvFileInput.addEventListener('change', function(event) {
+        const file = event.target.files[0];
+        // Disable button initially or while a new file is being selected/parsed
+        downloadBtn.disabled = true; 
+        downloadBtn.textContent = 'Parsing...';
+        
+        if (file) {
+            console.log(`Starting to parse file: ${file.name}`);
+
+            Papa.parse(file, {
+                header: true,
+                dynamicTyping: true, 
+                
+                complete: function(results) {
+                    // 2. Store the parsed data and check for errors
+                    const errors = results.errors.filter(e => e.type === 'Delimiter' || e.type === 'Field');
+
+                    if (errors.length > 0) {
+                        console.error("❌ Parsing completed with errors. Data may be incomplete.", results.errors);
+                        downloadBtn.textContent = 'Parsing Failed (Check Console)';
+                        // Even with errors, store the partial data if any
+                        parsedData = results.data;
+                    } else {
+                        parsedData = results.data;
+                        console.log("✅ Parsing Complete! Data ready for download.");
+                        console.log(`Total records parsed: ${parsedData.length}`);
+
+                        // 3. Enable the download button and update its text
+                        if (parsedData.length > 0) {
+                             downloadBtn.disabled = false;
+                             downloadBtn.textContent = `Download ${parsedData.length} Records as JSON`;
+                        } else {
+                             downloadBtn.textContent = 'No records found';
+                        }
+                    }
+                },
+                error: function(error) {
+                    console.error("❌ Fatal error during parsing:", error);
+                    downloadBtn.textContent = 'Error during Parsing';
+                }
+            });
+        }
+    });
+
+    // 4. Download Button Listener: Triggers file creation and download
+    downloadBtn.addEventListener('click', function() {
+        if (parsedData.length === 0 || downloadBtn.disabled) {
+            console.warn("No data available or button is disabled.");
+            return;
+        }
+        
+        // Convert the JavaScript array to a JSON string (pretty printed for readability)
+        const jsonString = JSON.stringify(parsedData, null, 2); 
+        
+        // Create a Blob (Binary Large Object) from the JSON string
+        const blob = new Blob([jsonString], { type: 'application/json' });
+        
+        // Create a temporary link element (<a> tag)
+        const a = document.createElement('a');
+        
+        // Create a temporary URL for the Blob
+        a.href = URL.createObjectURL(blob);
+        
+        // Set the filename
+        a.download = 'parsed_data.json'; 
+        
+        // Simulate a click on the link to start the download
+        document.body.appendChild(a);
+        a.click();
+        
+        // Clean up the temporary link and revoke the Blob URL
+        document.body.removeChild(a);
+        URL.revokeObjectURL(a.href);
+    });
+</script>
+</body>
+</html>
